@@ -45,6 +45,7 @@ public class View
         Console.Write("Your input: ");
         string input = Console.ReadLine() ?? throw new Exception("Input error");
 
+        if (input == "q") return false;
         if (input == "r") ResetCalled?.Invoke(this, EventArgs.Empty);
         else InputSubmitted?.Invoke(this, input);
 
