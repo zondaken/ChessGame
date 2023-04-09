@@ -6,21 +6,19 @@ namespace ChessGame.Chess.BoardFactoryNS;
 
 public class FenNotationStrategy : INotationStrategy
 {
+    #region Fields
     private Board _board = null!;
-    private BoardBuilder _builder = null!;
     private PieceFactory _factory = null!;
+    #endregion
 
-    private int _rankNo;
-    private string _rank = null!;
-
+    #region Constructors
     public FenNotationStrategy()
     {
-        var size = new BoardSize(rows: 8, cols: 8);
-
-        _builder = new BoardBuilder();
-        _builder.WithSize(size);
+        
     }
+    #endregion
 
+    #region Interface implementations
     public Board BuildBoard(string fen)
     {
         // format:
@@ -63,58 +61,80 @@ public class FenNotationStrategy : INotationStrategy
         string plysSinceCapture = split[4];
         string nextMoveNo = split[5];
 
+        var size = new Size(rows: 8, cols: 8);
+
+        var builder = new BoardBuilder();
+        builder.WithSize(size);
+
         // implement 2.)
         // TODO: only works for default chess as of now
-        _builder.WithNextTurn(nextTurn == "w" ? ETeam.White : ETeam.Black);
+        builder.WithNextTurn(nextTurn == "w" ? ETeam.White : ETeam.Black);
 
         // implement 3.) 4.) 5.) 6.)
-        _builder.WithCastlingRights(castlingRights);
-        _builder.WithEnPassantSquare(enPassantSquare);
-        _builder.WithPlysSincePawnMoveOrCapture(int.Parse(plysSinceCapture));
-        _builder.WithNextMoveNo(int.Parse(nextMoveNo));
+        builder.WithCastlingRights(castlingRights);
+        builder.WithEnPassantSquare(enPassantSquare);
+        builder.WithPlysSincePawnMoveOrCapture(int.Parse(plysSinceCapture));
+        builder.WithNextMoveNo(int.Parse(nextMoveNo));
 
         // implement 1.)
         string[] ranks = pieces.Split('/');
-        
-        _board = _builder.Build();
-        _factory = new PieceFactory(new FenPieceBuildStrategy(_board));
-        
+
+        _board = builder.Build();
+        _factory = new PieceFactory(new FenPieceBuildingStrategy(_board));
+
         HandleRanks(ranks);
+
+        // add to 4.)
+        if (_board.EnPassantSquare != "-")
+        {
+            // TODO: make "four-sided" chess possible by adding .IsValidSquare(Coordinate) to Board
+            // TODO: only works for default chess, as of now
+            var coord = Coordinate.FromString(_board, _board.EnPassantSquare);
+
+            if (coord.Rank == 2) // white en-passantable
+                coord.Rank += 1;
+            else if (coord.Rank == 5) // black en-passantable
+                coord.Rank -= 1;
+
+            var piece = _board[coord];
+
+            _board.EnPassantablePiece = piece;
+        }
 
         // return board
         return _board;
     }
+    #endregion
 
+    #region Private methods
     private void HandleRanks(string[] ranks)
     {
-        for (_rankNo = 0; _rankNo < ranks.Length; _rankNo++)
+        for (int rank = 0; rank < ranks.Length; rank++)
         {
-            _rank = ranks[_rankNo];
-            HandleRank();
+            string rankDesc = ranks[_board.Size.Rows - rank - 1];
+            HandleRank(rank, rankDesc);
         }
     }
 
-    private void HandleRank()
+    private void HandleRank(int rank, string rankDesc)
     {
         int fileNo = 0;
 
-        foreach (char c in _rank)
+        foreach (char pieceDesc in rankDesc)
         {
-            if (int.TryParse(c.ToString(), out int emptySquares))
+            if (int.TryParse(pieceDesc.ToString(), out int emptySquares))
             {
                 fileNo += emptySquares;
             }
             else
             {
-                var reverseRankNo = _board.Size.Rows - _rankNo - 1; // reverse row order
-                var file = fileNo;
-                var coordinate = new BoardCoordinate(_board, reverseRankNo, file);
+                var coord = new Coordinate(_board, rank, fileNo);
+                var piece = _factory.Build(pieceDesc.ToString());
 
-                var piece = _factory.Build(c.ToString());
-
-                _board[coordinate] = piece;
+                _board[coord] = piece;
                 fileNo++;
             }
         }
     }
+    #endregion
 }

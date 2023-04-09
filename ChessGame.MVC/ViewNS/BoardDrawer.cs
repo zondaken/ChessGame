@@ -34,7 +34,7 @@ public class BoardDrawer
 
             for (int col = 0; col < size.Cols; col++)
             {
-                PieceBase? piece = _board[row, col];
+                Piece? piece = _board[row, col];
 
                 Console.Write("| ");
                 DrawPiece(piece);
@@ -51,7 +51,7 @@ public class BoardDrawer
         DrawFileCaptions();
     }
 
-    private void DrawPiece(PieceBase? piece)
+    private void DrawPiece(Piece? piece)
     {
         if(piece == null)
         {

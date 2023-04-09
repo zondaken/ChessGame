@@ -27,6 +27,7 @@ public class View
         Console.WriteLine("Turn: {0}", board.NextTurn);
         Console.WriteLine("Castling rights: {0}", board.CastlingRights);
         Console.WriteLine("En-passant: {0}", board.EnPassantSquare);
+        Console.WriteLine("En-passantable Piece: {0}", (board.EnPassantablePiece?.ToString() ?? "-"));
         Console.WriteLine("Plys: {0}", board.HalfMovesSincePawnMoveOrCapture);
         Console.WriteLine("Next move no.: {0}", board.NextMoveNo);
         Console.WriteLine();
@@ -46,7 +47,7 @@ public class View
         string input = Console.ReadLine() ?? throw new Exception("Input error");
 
         if (input == "q") return false;
-        if (input == "r") ResetCalled?.Invoke(this, EventArgs.Empty);
+        else if (input == "r") ResetCalled?.Invoke(this, EventArgs.Empty);
         else InputSubmitted?.Invoke(this, input);
 
         return true;

@@ -20,6 +20,8 @@ public class Controller
 
     public void Run()
     {
+        ResetCalled(this, EventArgs.Empty);
+
         while (_view.Render()) ;
     }
 
@@ -27,14 +29,15 @@ public class Controller
     {
         if (!(sender is View view)) return;
 
-        var move = BoardMove.FromInput(_model.Board, input);
+        Move move;
 
         try
         {
-            _model.Board.ExecMove(move);
+            move = Move.FromString(_model.Board, input, out var possibleMoves);
+            _model.Board.ExecMove(move, possibleMoves);
             _model.LastError = string.Empty;
         }
-        catch(InvalidOperationException ex)
+        catch(Exception ex)
         {
             _model.LastError = ex.Message;
         }

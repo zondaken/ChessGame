@@ -26,62 +26,60 @@ namespace ChessGame.Chess.BoardNS;
      a    b    c    d    e    f    g   h
 */
 
-public class Board : IEnumerable<PieceBase?>
+public class Board : IEnumerable<Piece?>
 {
     #region Fields
-    private PieceBase?[] _board;
+    private Piece?[] _board;
     #endregion
 
     #region Properties
-    public BoardSize Size { get; }
+    public Size Size { get; }
 
     public ETeam NextTurn { get; set; } = ETeam.White;
-    
     public string CastlingRights { get; set; } = "KQkq";
-
     public string EnPassantSquare { get; set; } = "-";
-    
+    public Piece? EnPassantablePiece { get; set; } = null;
     public int HalfMovesSincePawnMoveOrCapture { get; set; } = 0;
-    
     public int NextMoveNo { get; set; } = 1;
 
     #region Indexer
-    public PieceBase? this[BoardCoordinate coord]
+    public Piece? this[Coordinate coord]
     {
         get => _board[coord.Index];
         set => _board[coord.Index] = value;
     }
 
-    public PieceBase? this[int index]
+    public Piece? this[int index]
     {
-        get => this[new BoardCoordinate(this, index)];
-        set => this[new BoardCoordinate(this, index)] = value;
+        get => this[new Coordinate(this, index)];
+        set => this[new Coordinate(this, index)] = value;
     }
 
-    public PieceBase? this[int rank, int file]
+    public Piece? this[int rank, int file]
     {
-        get => this[new BoardCoordinate(this, rank, file)];
-        set => this[new BoardCoordinate(this, rank, file)] = value;
+        get => this[new Coordinate(this, rank, file)];
+        set => this[new Coordinate(this, rank, file)] = value;
     }
 
-    public PieceBase? this[string input]
+    public Piece? this[string input]
     {
-        get => this[BoardCoordinate.FromInput(this, input)];
-        set => this[BoardCoordinate.FromInput(this, input)] = value;
+        get => this[Coordinate.FromString(this, input)];
+        set => this[Coordinate.FromString(this, input)] = value;
     }
     #endregion
     #endregion
 
     #region Constructors
-    public Board(BoardSize size)
+    public Board(Size size)
     {
         Size = size;
-        _board = new PieceBase[size.Count];
+        _board = new Piece[size.Count];
     }
     #endregion
 
+    #region Interface implementations
     #region IEnumerable<PieceBase?>
-    public IEnumerator<PieceBase?> GetEnumerator()
+    public IEnumerator<Piece?> GetEnumerator()
     {
         for (int i = 0; i < Size.Count; i++)
         {
@@ -95,84 +93,55 @@ public class Board : IEnumerable<PieceBase?>
     }
     #endregion
 
-    #region Methods
-    public void ExecMove(BoardMove move)
+    #endregion
+
+    #region Public methods (interface)
+    public void ExecMove(Move move, IEnumerable<Move> possibleMoves)
     {
         var from = move.From;
         var to = move.To;
-        var piece = this[from];
+        var piece = this[move.From];
 
         if (piece == null) throw new InvalidOperationException("Empty source square.");
         if (piece.Team != NextTurn) throw new InvalidOperationException("Not your turn.");
 
-        var possibleMoves = piece.GetPossibleMoves();
-
         if (!possibleMoves.Contains(move)) throw new InvalidOperationException("Invalid move.");
 
-        // no human error!!!
-
-        this[to] = this[from];
-        this[from] = null;
-
-        if (piece is PawnPiece pawn && (to - from) == pawn.MoveDirection * 2)
-        {
-            EnPassantSquare = (from + pawn.MoveDirection).ToString();
-        }
-        else
-        {
-            EnPassantSquare = "-";
-        }
-
-        // handle ability to castle
-        // TODO: Chess960 problems
-        if (piece is RookPiece)
-        {
-            if (from.Rank == 0) // white rook
-            {
-                if(from.File == 0) // white [a] rook (queenside)
-                {
-                    CastlingRights = CastlingRights.RemoveChar('Q');
-                }
-                else if(from.File == Size.Cols - 1) // white [h] rook (kingside)
-                {
-                    CastlingRights = CastlingRights.RemoveChar('K');
-                }
-            }
-            else if(from.Rank == Size.Rows - 1) // black rook
-            {
-                if (from.File == 0) // black [a] rook (queenside)
-                {
-                    CastlingRights = CastlingRights.RemoveChar('q');
-                }
-                else if (from.File == Size.Cols - 1) // black [h] rook (kingside)
-                {
-                    CastlingRights = CastlingRights.RemoveChar('k');
-                }
-            }
-        }
-        else if(piece is KingPiece)
-        {
-            if (from.Rank == 0) // white king
-            {
-                CastlingRights = CastlingRights.RemoveChar('K').RemoveChar('Q');
-            }
-            else if(from.Rank == Size.Rows - 1) // black king
-            {
-                CastlingRights = CastlingRights.RemoveChar('k').RemoveChar('q');
-            }
-        }
+        // NO HUMAN ERROR!
 
         // TODO: only increase when pawn move or capture
-        if (piece is PawnPiece || this[to] != null)
+        if (piece is Pawn || this[to] != null)
         {
             HalfMovesSincePawnMoveOrCapture++;
         }
+
+        // general execution
+        MovePiece(move);
 
         // TODO: only works for default chess as of now
         NextTurn = NextTurn == ETeam.White ? ETeam.Black : ETeam.White;
 
         // TODO: only works for default chess as of now
         NextMoveNo += NextTurn == ETeam.White ? 1 : 0;
+
+        // custom execution
+        piece.ExecMove(this, move);
+    }
+    #endregion
+
+    #region Private methods
+    private void MovePiece(Move move)
+    {
+        var from = move.From;
+        var to = move.To;
+
+        if (move.CapturedPiece != null)
+        {
+            this[move.CapturedPiece.GetPosition(this)] = null;
+        }
+
+        this[to] = this[from];
+        this[from] = null;
     }
     #endregion
 }
